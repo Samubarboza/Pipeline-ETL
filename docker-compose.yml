@@ -1,0 +1,60 @@
+# instrucciones para armar y levantar todo el entorno 
+services:
+  postgres:
+    image: postgres:15
+    container_name: dw_postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: warehouse
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgres_data:/var/lib/postgresql/data
+      - ./sql:/sql
+
+  airflow-init:
+    image: apache/airflow:2.9.3
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db init &&
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname admin \
+          --lastname admin \
+          --role Admin \
+          --email admin@example.com
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/warehouse
+    volumes:
+      - ./dags:/opt/airflow/dags
+    depends_on:
+      - postgres
+
+  airflow-webserver:
+    image: apache/airflow:2.9.3
+    command: webserver
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@dw_postgres/warehouse
+    volumes:
+      - ./dags:/opt/airflow/dags
+    depends_on:
+      - airflow-init
+
+  airflow-scheduler:
+    image: apache/airflow:2.9.3
+    command: scheduler
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/warehouse
+    volumes:
+      - ./dags:/opt/airflow/dags
+    depends_on:
+      - airflow-webserver

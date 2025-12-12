@@ -1,4 +1,4 @@
-INSERT INTO stg_weather (
+INSERT INTO staging_weather (
     weather_timestamp,
     city,
     country,
@@ -17,3 +17,4 @@ SELECT
     execution_date
 FROM raw_weather
 WHERE execution_date = '{{ ds }}';
+
